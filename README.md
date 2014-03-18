@@ -1,0 +1,1 @@
+Simple javascript ia to control 2048 game
