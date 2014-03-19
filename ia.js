@@ -41,7 +41,7 @@ var colAccessorFactory = function(way) {
 	};
     	
 	break;
-    case 4:
+    case 4: //right
 	return function(aGrid, y) {
 	    return { 
 		get: function(idx) {
@@ -58,10 +58,12 @@ var colAccessorFactory = function(way) {
 
 
 var grid = function () {
-    this.g = new Array(
-		       
-		       new Array(2, 2, 2, 2),new Array(4, 0, 4, 4),new Array(2, 4, 4, 4),
-		       new Array(4, 0, 2, 2));
+    this.g = new Array(	
+	new Array(2, 2, 2, 2),
+	new Array(4, 0, 4, 4),
+	new Array(2, 2, 0, 8),
+	new Array(4, 0, 2, 2));
+
     this.score = 0;
 
     this.moveCol = function(colAccessor) {	
@@ -85,6 +87,7 @@ var grid = function () {
 		if (colAccessor.get(ny) === v) {
 		    colAccessor.set(ny,0);
 		    v *= 2;
+		    this.score += v;
 		    miny = ny + 1;
 		}
 		ny--;
@@ -98,6 +101,10 @@ var grid = function () {
 	for (x = 0; x < 4; x++) {	
 	    this.moveCol(colAccessorFactory(way)(this.g, x));
 	}
+    };
+
+    this.isOver = function() {
+	
     };
 };
 
@@ -113,6 +120,7 @@ var grid = function () {
 
 function dumpGrid(grid) {
     var html = '<ul style="display: inline-block">';
+    html += "<li>score: " + grid.score  + "</li>";
     for (var y = 3; y >= 0; y--) {
 	html += "<li>";
 	for (var x = 0; x < 4; x++) {
