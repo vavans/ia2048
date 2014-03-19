@@ -1,53 +1,102 @@
+
+
+var colAccessorFactory = function(way) {
+    switch (way) {
+    case 1: //down
+	return function(aGrid, x) {
+	    var col = aGrid[x];
+	    return { 
+		get: function(idx) {
+		    return col[idx];
+		},
+		set: function(idx, value) {
+		    col[idx] = value;
+		}
+	    };
+	};	
+	break;
+    case 2: //left
+	return function(aGrid, y) {
+	    return { 
+		get: function(idx) {
+		    return aGrid[idx][y];
+		},
+		set: function(idx, value) {
+		    aGrid[idx][y] = value;
+		}
+	    };
+	};	
+	break;
+    case 3: //up
+	return function(aGrid, x) {
+	    var col = aGrid[x];
+	    return { 
+		get: function(idx) {
+		    return col[3 - idx];
+		},
+		set: function(idx, value) {
+		    col[3 - idx] = value;
+		}
+	    };
+	};
+    	
+	break;
+    case 4:
+	return function(aGrid, y) {
+	    return { 
+		get: function(idx) {
+		    return aGrid[3 - idx][y];
+		},
+		set: function(idx, value) {
+		    aGrid[3 - idx][y] = value;
+		}
+	    };
+	};
+	break;
+    }
+}; 
+
+
 var grid = function () {
     this.g = new Array(
 		       
-		       new Array(2, 2, 2, 2),new Array(4, 0, 4, 4),new Array(0, 0, 4, 4),
+		       new Array(2, 2, 2, 2),new Array(4, 0, 4, 4),new Array(2, 4, 4, 4),
 		       new Array(4, 0, 2, 2));
     this.score = 0;
 
-    this.moveCol = function(col, direction) {
-
+    this.moveCol = function(colAccessor) {	
 	var canGoDeeper = function(c, idx, value, min_y) {
-	    return (idx >= min_y && (c[idx] === 0 || (c[idx] === value)));  
+	    return (idx >= min_y && (c.get(idx) === 0 || (c.get(idx) === value)));  
 	};
 
 	var miny = 0;
 	for (y = 1; y < 4; y++) {	   
-	    var v = col[y];
+	    var v = colAccessor.get(y);
 	    if (v === 0)
 		continue;
-	    col[y] = 0;
+	    colAccessor.set(y,0);
+	    
 	    var ny = y - 1;
 
 	    var destination = y;
 
-	    while(canGoDeeper(col, ny, v, melted, miny)) {
+	    while(canGoDeeper(colAccessor, ny, v, miny)) {
 		destination = ny;
-		if (col[ny] === v) {
-		    col[ny] = 0;
+		if (colAccessor.get(ny) === v) {
+		    colAccessor.set(ny,0);
 		    v *= 2;
 		    miny = ny + 1;
 		}
 		ny--;
 	    }
-	    col[destination] = v;
+	    colAccessor.set(destination, v);
 	}
-    }
+    };
 
     this.play = function(way) {
 	var x,y = 0;
-	switch (way) {
-	case 1: //down
-	    for (x = 0; x < 4; x++) {	
-		this.moveCol(this.g[x], -1);
-	    }
-	    break;
-	case 2:
-	    break;
-	case 3:
-	    break;
-	case 4:
-	    break;
+	for (x = 0; x < 4; x++) {	
+	    this.moveCol(colAccessorFactory(way)(this.g, x));
 	}
     };
 };
@@ -63,7 +112,7 @@ var grid = function () {
 
 
 function dumpGrid(grid) {
-    var html = "<ul>";
+    var html = '<ul style="display: inline-block">';
     for (var y = 3; y >= 0; y--) {
 	html += "<li>";
 	for (var x = 0; x < 4; x++) {
@@ -76,7 +125,31 @@ function dumpGrid(grid) {
 }
 
 var g = new grid();
+document.write("initial state <br/>");
+document.write(dumpGrid(g));
+document.write(" move down ");
 g.play(1);
+document.write(dumpGrid(g));
+document.write("<br/>");
+
+g = new grid();
+document.write(dumpGrid(g));
+document.write(" move left ");
+g.play(2);
+document.write(dumpGrid(g));
+document.write("<br/>");
 
 
+g = new grid();
+document.write(dumpGrid(g));
+document.write(" move up ");
+g.play(3);
+document.write(dumpGrid(g));
+document.write("<br/>");
+
+
+g = new grid();
+document.write(dumpGrid(g));
+document.write(" move right ");
+g.play(4);
 document.write(dumpGrid(g));
