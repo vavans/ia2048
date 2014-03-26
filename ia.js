@@ -56,17 +56,23 @@ var colAccessorFactory = function(way) {
     }
 }; 
 
-var game = function() {
-    
-};
-
 var board = function(array) {
     this.g = array;
     this.score = 0;
 };
 
 board.prototype.equals = function(other) {
-    return other.scrore == this.score;
+    if (other.score !== this.score) {
+	return false;
+    }
+    for (var x = 0; x < 4; x++) {
+	for (var y = 0; y < 4; y++) {
+	    if (this.g[x][y] !== other.g[x][y]) {
+		return false;
+	    }
+	}
+    }
+    return true;
 };
 
 board.prototype.clone = function() {
@@ -80,15 +86,32 @@ board.prototype.clone = function() {
 	    b.g[x][y] = this.g[x][y];
 	}	
     }
+    b.score = this.score;
     return b;
 };
 
+//60% tile 2
+//40% tile 4
+var tilesProba = new Array(2,2,2,2,2,2,4,4,4,4);
+
 var grid = function () {
     this.board = new board(new Array(	
-	new Array(2, 2, 2, 2),
-	new Array(4, 0, 4, 4),
-	new Array(2, 2, 0, 8),
-	new Array(4, 0, 2, 2)));
+	new Array(0, 0, 0, 0),
+	new Array(0, 0, 0, 0),
+	new Array(0, 0, 0, 0),
+	new Array(0, 0, 0, 0)));
+};
+
+grid.prototype.spawn = function() {
+    for (var x = 0; x < 4; x++) {
+	for (var y = 0; y < 4; y++) {	    
+	    if (this.board.g[x][y] === 0) {
+		this.board.g[x][y] = tilesProba[Math.floor(Math.random()*10)];	 
+		return true;
+	    }	    
+	}    
+    }
+    return false;
 };
 
 grid.prototype.moveCol = function(colAccessor) {	
@@ -123,8 +146,14 @@ grid.prototype.moveCol = function(colAccessor) {
 
 grid.prototype.play = function(way) {
     var x = 0;
+    var oldBoard = this.board.clone();
     for (x = 0; x < 4; x++) {	
 	this.moveCol(colAccessorFactory(way)(this.board.g, x));
+    }
+    var newBoard = this.board;
+    //spawn a tile when the move is a valid one (ie : tiles have moved)
+    if (!oldBoard.equals(newBoard)) {
+	this.spawn();
     }
 };
 
@@ -142,29 +171,55 @@ grid.prototype.isOver = function() {
     return true;
 };
 
-
-
-
-
 var ia = (function () {
     var p2 = 0.6;
     var p4 = 0.4;
 
+    var evaluateMove = function(board, move) {
+	var maxDeep = 15;
+	var gamesNb = 60;
+	var sum = 0;
+	var boardMin;
+	var boardMax;
+	for (var p = 0; p < gamesNb; p++) {    
+	    var currentGame = new grid();
+	    currentGame.board = board.clone();
+	    currentGame.play(move);		
+	    var i = 0;	    
+	    while (!currentGame.isOver() && i < maxDeep) {
+		i++;
+		var m = Math.floor(Math.random()*4) + 1;
+		currentGame.play(m);		
+	    }			    
+	    
+	    var score = currentGame.board.score;
+	    sum += score;
+	}
+	return sum / gamesNb;
+    };
+
     return {
-	getMove : function(board) {
-	    return Math.floor(Math.random()*4) + 1;
+	getMove : function(board) {	    
+	    var moves = new Array(1,2,3,4);
+	    var bestMove = { score:1, way: 1};
+	    for (var i = 0; i < 4; i++) {
+		var s = evaluateMove(board, moves[i]);
+		if (s > bestMove.score) {
+		    bestMove = { score:s, way: moves[i]};
+		}
+	    }
+	    return bestMove.way;	    
 	}
     };
 })();
 
-
-function dumpGrid(grid) {
+function dumpBoard(board) {
     var html = '<ul style="display: inline-block">';
-    html += "<li>over: " + grid.isOver()  + ". score: " + grid.board.score  + "</li>";
+    html += "<li>score: " + board.score  + "</li>";
     for (var y = 3; y >= 0; y--) {
 	html += "<li>";
 	for (var x = 0; x < 4; x++) {
-	    html += grid.board.g[x][y] + " ";
+	    html += board.g[x][y] + " ";
 	}    
 	html += "</li>";	
     }
@@ -172,37 +227,62 @@ function dumpGrid(grid) {
     return html;
 }
 
+function dumpMove(way) {
+    switch (way) {
+    case 1:
+	document.write(" move down ");
+	break;
+    case 2:
+	document.write(" move left ");
+	break;
+    case 3:
+	document.write(" move up ");
+	break;
+    case 4:
+	document.write(" move right ");
+	break;
+    }
+}
+
+
 var simulator = function(ia) {
-    
-    while 
+    var currentGame = new grid();
+    currentGame.spawn();
+    currentGame.spawn();
+    //dumpGrid(currentGame)
+    var i = 0;
+    while (!currentGame.isOver()) {
+	var move = ia.getMove(currentGame.board);
+	dumpMove(move);
+	currentGame.play(move);
+	document.write(dumpBoard(currentGame.board));
+    }
+    return currentGame;
 };
 
-var g = new grid();
-document.write("initial state <br/>");
-document.write(dumpGrid(g));
-document.write(" move down ");
-g.play(1);
-document.write(dumpGrid(g));
-document.write("<br/>");
+var max = 0;
+var gamesNb = 1;
+var sum = 0;
+var min = 10000000000000000;
+var boardMin;
+var boardMax;
+for (var p = 0; p < gamesNb; p++) {    
+    var game = simulator(ia);
+    var score = game.board.score;
+    sum += score;
+    if (score > max) {
+	max = score;
+	boardMax = game.board.clone();
+    }
+    if (score < min) {
+	min = score;
+	boardMin = game.board.clone();
+    }
+}
 
-g = new grid();
-document.write(dumpGrid(g));
-document.write(" move left ");
-g.play(2);
-document.write(dumpGrid(g));
-document.write("<br/>");
+document.write(dumpBoard(boardMax));
+document.write("<br/>max score = " + max + "<br/>");
+document.write(dumpBoard(boardMin));
+document.write("<br/>min score = " + min + "<br/>");
 
-
-g = new grid();
-document.write(dumpGrid(g));
-document.write(" move up ");
-g.play(3);
-document.write(dumpGrid(g));
-document.write("<br/>");
-
-
-g = new grid();
-document.write(dumpGrid(g));
-document.write(" move right ");
-g.play(4);
-document.write(dumpGrid(g));
+document.write("average score = " + sum / gamesNb + "<br/>");
