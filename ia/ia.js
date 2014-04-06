@@ -115,31 +115,31 @@ grid.prototype.spawn = function() {
 
 grid.prototype.moveCol = function(colAccessor) {	
     var canGoDeeper = function(c, idx, value, min_y) {
-	return (idx >= min_y && (c.get(idx) === 0 || (c.get(idx) === value)));  
+        return (idx >= min_y && (c.get(idx) === 0 || (c.get(idx) === value)));  
     };
     
     var miny = 0;
     for (y = 1; y < 4; y++) {	   
-	var v = colAccessor.get(y);
-	if (v === 0)
-	    continue;
-	colAccessor.set(y,0);
-	
-	var ny = y - 1;
-	
-	var destination = y;
-	
-	while(canGoDeeper(colAccessor, ny, v, miny)) {
-	    destination = ny;
-	    if (colAccessor.get(ny) === v) {
-		colAccessor.set(ny,0);
-		v *= 2;
-		this.board.score += v;
-		miny = ny + 1;
-	    }
-	    ny--;
-	}
-	colAccessor.set(destination, v);
+        var v = colAccessor.get(y);
+        if (v === 0)
+            continue;
+        colAccessor.set(y,0);
+        
+        var ny = y - 1;
+        
+        var destination = y;
+        
+        while(canGoDeeper(colAccessor, ny, v, miny)) {
+            destination = ny;
+            if (colAccessor.get(ny) === v) {
+                colAccessor.set(ny,0);
+                v *= 2;
+                this.board.score += v;
+                miny = ny + 1;
+            }
+            ny--;
+        }
+        colAccessor.set(destination, v);
     }
 };
 
@@ -147,12 +147,12 @@ grid.prototype.play = function(way) {
     var x = 0;
     var oldBoard = this.board.clone();
     for (x = 0; x < 4; x++) {	
-	this.moveCol(colAccessorFactory(way)(this.board.g, x));
+        this.moveCol(colAccessorFactory(way)(this.board.g, x));
     }
     var newBoard = this.board;
     //spawn a tile when the move is a valid one (ie : tiles have moved)
     if (!oldBoard.equals(newBoard)) {
-	this.spawn();
+        this.spawn();
     }
 };
 
@@ -160,55 +160,106 @@ grid.prototype.isOver = function() {
     var newGrid = new grid();
     newGrid.board = this.board.clone();
     for (var way = 1; way < 5; way++) {
-	for (x = 0; x < 4; x++) {		    
-	    newGrid.moveCol(colAccessorFactory(way)(newGrid.board.g, x));
-	    if (!newGrid.board.equals(this.board)) {
-		return false;
-	    }
-	}
+        for (x = 0; x < 4; x++) {		    
+            newGrid.moveCol(colAccessorFactory(way)(newGrid.board.g, x));
+            if (!newGrid.board.equals(this.board)) {
+                return false;
+            }
+        }
     }
     return true;
 };
+
+
+var gameState = function(board) {        
+    this.board = board;
+};
+
+gameState.prototype.simulate = function() {
+    var maxDeep = 15;
+    var sum = 0;
+    var boardMin;
+    var boardMax;
+    var currentGame = new grid();
+    currentGame.board = this.board.clone();
+    var i = 0;	    
+    while (!currentGame.isOver() && i < maxDeep) {
+        i++;
+        var m = Math.floor(Math.random()*4) + 1;
+        currentGame.play(m);		
+    }			    
+    
+    return currentGame.board.score;
+};
+
+gameState.prototype.play = function() {
+    var currentGame = new grid();
+    currentGame.board = this.board.clone();
+    currentGame.play(m);		
+    return new gameState(currentGame.board);
+};
+
+
+var iamontecarlo = (function () {
+
+    var root = null;
+
+
+    return {
+        getMove : function(board) {	    
+
+            if (root === null) { //first move
+                root = new node(new gameState(board), null, null);
+            }
+            for (var i = 0; i < 10; i++) {
+                root.expand();
+            }
+            var move = root.getBestMove();
+            root = move.child;
+            return move.way;
+        }
+    };
+})();
 
 var ia = (function () {
     var p2 = 0.6;
     var p4 = 0.4;
 
     var evaluateMove = function(board, move) {
-	var maxDeep = 15;
-	var gamesNb = 60;
-	var sum = 0;
-	var boardMin;
-	var boardMax;
-	for (var p = 0; p < gamesNb; p++) {    
-	    var currentGame = new grid();
-	    currentGame.board = board.clone();
-	    currentGame.play(move);		
-	    var i = 0;	    
-	    while (!currentGame.isOver() && i < maxDeep) {
-		i++;
-		var m = Math.floor(Math.random()*4) + 1;
-		currentGame.play(m);		
-	    }			    
-	    
-	    var score = currentGame.board.score;
-	    sum += score;
-	}
-	return sum / gamesNb;
+        var maxDeep = 15;
+        var gamesNb = 60;
+        var sum = 0;
+        var boardMin;
+        var boardMax;
+        for (var p = 0; p < gamesNb; p++) {    
+            var currentGame = new grid();
+            currentGame.board = board.clone();
+            currentGame.play(move);		
+            var i = 0;	    
+            while (!currentGame.isOver() && i < maxDeep) {
+                i++;
+                var m = Math.floor(Math.random()*4) + 1;
+                currentGame.play(m);		
+            }			    
+            
+            var score = currentGame.board.score;
+            sum += score;
+        }
+        return sum / gamesNb;
     };
 
     return {
-	getMove : function(board) {	    
-	    var moves = new Array(1,2,3,4);
-	    var bestMove = { score:1, way: 1};
-	    for (var i = 0; i < 4; i++) {
-		var s = evaluateMove(board, moves[i]);
-		if (s > bestMove.score) {
-		    bestMove = { score:s, way: moves[i]};
-		}
-	    }
-	    return bestMove.way;	    
-	}
+        getMove : function(board) {	    
+            var moves = new Array(1,2,3,4);
+            var bestMove = { score:1, way: 1};
+            for (var i = 0; i < 4; i++) {
+                var s = evaluateMove(board, moves[i]);
+                if (s > bestMove.score) {
+                    bestMove = { score:s, way: moves[i]};
+                }
+            }
+            return bestMove.way;	    
+        }
     };
 })();
 
@@ -216,11 +267,11 @@ function dumpBoard(board) {
     var html = '<ul style="display: inline-block">';
     html += "<li>score: " + board.score  + "</li>";
     for (var y = 3; y >= 0; y--) {
-	html += "<li>";
-	for (var x = 0; x < 4; x++) {
-	    html += board.g[x][y] + " ";
-	}    
-	html += "</li>";	
+        html += "<li>";
+        for (var x = 0; x < 4; x++) {
+            html += board.g[x][y] + " ";
+        }    
+        html += "</li>";	
     }
     html += "</ul>";
     return html;
@@ -229,16 +280,16 @@ function dumpBoard(board) {
 function dumpMove(way) {
     switch (way) {
     case 1:
-	document.write(" move down ");
+        document.write(" move down ");
 	break;
     case 2:
-	document.write(" move left ");
+        document.write(" move left ");
 	break;
     case 3:
-	document.write(" move up ");
+        document.write(" move up ");
 	break;
     case 4:
-	document.write(" move right ");
+        document.write(" move right ");
 	break;
     }
 }
@@ -251,10 +302,10 @@ var simulator = function(ia) {
     //dumpGrid(currentGame)
     var i = 0;
     while (!currentGame.isOver()) {
-	var move = ia.getMove(currentGame.board);
-	dumpMove(move);
-	currentGame.play(move);
-	document.write(dumpBoard(currentGame.board));
+        var move = ia.getMove(currentGame.board);
+        dumpMove(move);
+        currentGame.play(move);
+        document.write(dumpBoard(currentGame.board));
     }
     return currentGame;
 };
@@ -266,16 +317,16 @@ var min = 10000000000000000;
 var boardMin;
 var boardMax;
 for (var p = 0; p < gamesNb; p++) {    
-    var game = simulator(ia);
+    var game = simulator(iamontecarlo);
     var score = game.board.score;
     sum += score;
     if (score > max) {
-	max = score;
-	boardMax = game.board.clone();
+        max = score;
+        boardMax = game.board.clone();
     }
     if (score < min) {
-	min = score;
-	boardMin = game.board.clone();
+        min = score;
+        boardMin = game.board.clone();
     }
 }
 
