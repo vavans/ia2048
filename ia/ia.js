@@ -192,7 +192,7 @@ gameState.prototype.simulate = function() {
     return currentGame.board.score;
 };
 
-gameState.prototype.play = function() {
+gameState.prototype.play = function(m) {
     var currentGame = new grid();
     currentGame.board = this.board.clone();
     currentGame.play(m);		
@@ -216,7 +216,7 @@ var iamontecarlo = (function () {
             }
             var move = root.getBestMove();
             root = move.child;
-            return move.way;
+            return root.way;
         }
     };
 })();
