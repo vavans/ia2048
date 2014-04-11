@@ -33,9 +33,9 @@ node.prototype.getBestMove = function () {
 
 node.prototype.expand = function () {
     //First, we expand a move not allready explored
-    if (lastMoves.length > 0) {
-        var move = lastMoves.pop();            
-        var child = new node(gameState.play(move), move, this);
+    if (this.lastMoves.length > 0) {
+        var move = this.lastMoves.pop();            
+        var child = new node(this.gameState.play(move), move, this);
         this.children.push(child);
         child.simulate();            
     }
@@ -51,6 +51,7 @@ node.prototype.expand = function () {
         }
     }   
     bestMove.child.expand();
+    }
 };
 
 node.prototype.backPropagation = function (simScore) {
